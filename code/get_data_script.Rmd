@@ -9,6 +9,7 @@ output:
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+setwd("E:/Github/web-performance-analysis/")
 ```
 
 # Introduction
@@ -31,7 +32,7 @@ This notebook shows how to extract and process \href{https://console.cloud.googl
 ```
 
 ```{r pkg.load}
-# 📦 Load required libraries
+# Load required libraries
 library(bigrquery)
 library(DBI)
 library(dplyr)
@@ -40,6 +41,7 @@ library(readr)
 library(lubridate)
 library(arrow)
 library(glue)
+library(here)
 ```
 
 # Authentication
@@ -66,6 +68,7 @@ org_df <- bq_table_download(tb)
 
 head(org_df)
 ```
+
 The original data contains 16 columns, 6 of them are nested (`totals`, `trafficSource`, `device`, `geoNetwork`, `customDimensions`, `hits`) and 3 of them are obfuscated (`visitorId`, `userId` and `clientId`).
 
 # Extract one day of flattened columns
@@ -92,8 +95,8 @@ SELECT
   totals.bounces AS total_bounces,
   totals.timeOnsite AS total_timeOnsite,
   totals.transactions AS total_transactions,
-  totals.transactionRevenue AS total_transactionRevenue,
-  totals.totalTransactionRevenue AS total_totalTransactionRevenue,
+  totals.transactionRevenue/1000000 AS total_transactionRevenue,
+  totals.totalTransactionRevenue/1000000 AS total_totalTransactionRevenue,
   -- trafficSource unnested columns
   trafficSource.source AS trafficSource_source,
   trafficSource.campaign AS trafficSource_campaign,
@@ -101,10 +104,10 @@ SELECT
   device.browser AS device_browser,
   device.deviceCategory As device_deviceCategory,
   -- geoNetwork unnested columns
-  geoNetwork.continent as geoNetwork_continent,
-  geoNetwork.country AS geoNetwork_country,
+  geoNetwork.continent AS geoNetwork_continent,
+  geoNetwork.country AS geoNetwork_country
   
-FROM `bigquery-public-data.google_analytics_sample.ga_sessions_20170101`
+FROM `bigquery-public-data.google_analytics_sample.ga_sessions_20170801`
 "
 
 # Run the query and save to a dataframe
@@ -170,8 +173,8 @@ download_ga_data <- function(project_id, start_date, end_date, saved_path, cardi
         totals.bounces AS total_bounces,
         totals.timeOnsite AS total_timeOnsite,
         totals.transactions AS total_transactions,
-        totals.transactionRevenue AS total_transactionRevenue,
-        totals.totalTransactionRevenue AS total_totalTransactionRevenue,
+        totals.transactionRevenue/1000000 AS total_transactionRevenue,
+        totals.totalTransactionRevenue/1000000 AS total_totalTransactionRevenue,
         trafficSource.source AS trafficSource_source,
         trafficSource.campaign AS trafficSource_campaign,
         device.browser AS device_browser,
@@ -214,10 +217,12 @@ To download full data (from August 2016 to August 2017), we run the code below:
 ```{r full_download}
 download_ga_data(
   project_id="bigdata-382912",
-  start_date="20170101",
-  end_date="20170102", 
-  saved_path = "/data/")
+  start_date="20160801",
+  end_date="20170731", 
+  saved_path =  here("data")
+  )
 ```
+
 
 
 
