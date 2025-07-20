@@ -3,6 +3,8 @@ title: "Google Analytics Sample - Analysis"
 author: "Tung Anh"
 date: "2025-07-16"
 output:
+  html_document:
+    self_contained: true
   pdf_document:
     latex_engine: xelatex
 ---
@@ -18,12 +20,12 @@ setwd("E:/Github/web-performance-analysis/")
 
 ```{r pkg.install, include=FALSE}
 
-# install.packages("bigrquery")      
-# install.packages("DBI")            
-# install.packages("plotly")         
-# install.packages("dplyr")          
-# install.packages("tidyr")          
-# install.packages("readr")          
+# install.packages("bigrquery")
+# install.packages("DBI")
+# install.packages("plotly")
+# install.packages("dplyr")
+# install.packages("tidyr")
+# install.packages("readr")
 # install.packages("bigrquery")
 # install.packages("lubridate")
 # install.packages("arrow")
@@ -33,6 +35,7 @@ setwd("E:/Github/web-performance-analysis/")
 # install.packages("rnaturalearthdata")
 # install.packages("sf")
 # install.packages("plotly")
+# install.packages("shiny")
 ```
 
 ```{r pkg.load}
@@ -81,6 +84,13 @@ df = full_df %>% collect()
 ## 1a. Session per days
 
 ```{r}
+# Collection des données
+sessions_per_day <- full_df %>%
+  group_by(date = ymd(date)) %>%
+  summarise(sessions = n_distinct(visitId)) %>%
+  arrange(date) %>%
+  collect()
+
 # Moyenne et maximum des sessions
 avg_sessions <- mean(sessions_per_day$sessions, na.rm = TRUE)
 y_max <- max(sessions_per_day$sessions, na.rm = TRUE)
@@ -185,10 +195,12 @@ Pour mieux comprendre l’origine de cette tendance, nous allons analyser les to
 
 ```{r}
 # Mettre date au format Date et mois au format mm/yyyy
-df_monthly <- df %>%
+df_monthly <- full_df %>%
   mutate(date = ymd(date)) %>%
   filter(date >= ymd("2016-08-01") & date <= ymd("2017-03-31")) %>%
+  collect() %>%
   mutate(month = format(date, "%m/%Y"))
+
 
 # Calculer le top 3 des sources par mois
 top_sources_monthly <- df_monthly %>%
@@ -299,7 +311,9 @@ bounce_summary <- full_df %>%
   mutate(bounce_rate = total_bounces / total_visits)
 
 avg_bounce = bounce_summary$bounce_rate  # Affiche le taux de rebond global
+print(avg_bounce)
 ```
+
 Le taux de rebond global est d’environ 50,8%, ce qui signifie qu’un peu plus de la moitié des sessions se terminent après une seule interaction sans navigation supplémentaire sur le site.
 
 ```{r}
@@ -515,12 +529,77 @@ p <- ggplot(map_data) +
 # Rendre le graphique interactif avec plotly  
 ggplotly(p, tooltip = "text")
 ```
-# 3. L'analyse de revenue des transactions
+Le taux de rebond est significativement plus faible sur les marchés des États-Unis (35,4 %) et du Canada, comparé à la moyenne observée dans le reste du monde, où il dépasse souvent 60 %. Cela suggère un engagement utilisateur nettement supérieur en Amérique du Nord. Par conséquent, il est crucial de distinguer ces marchés du reste du monde lors de l’analyse des performances globales du site. Une agrégation globale masquerait des dynamiques régionales essentielles, comme les zones à fort taux de rebond (plus de 65 %) observées en Afrique, en Amérique latine et dans plusieurs pays d’Asie, ce qui pourrait orienter différemment les décisions d’optimisation UX ou marketing.
 
+# 3. L'analyse des nouveaux visiteurs vs. anciennes visiteurs
 
+```{r}
+# Nettoyage temporaire
+df$total_pageviews <- as.numeric(as.character(df$total_pageviews))
+df$total_timeOnsite <- as.numeric(as.character(df$total_timeOnsite))
+df$total_bounces <- as.numeric(as.character(df$total_bounces))
+df$total_newVisits <- as.character(df$total_newVisits)
 
+# Définir le type de visiteur
+df$total_bounces <- ifelse(is.na(df$total_bounces), 0, df$total_bounces)
 
+# Définir le type de visiteur
+df$type_visiteur <- recode(df$total_newVisits,
+                           "1" = "Nouveau",
+                           .missing = "Ancienne")
+```
 
+```{r}
+# Collection des données
+comparaison <- df %>%
+  group_by(type_visiteur) %>%
+  summarise(
+    total_sessions = n(),  # count of sessions per visitor type
+    total_pages_vues = sum(total_pageviews, na.rm = TRUE),
+    pages_par_session_moyenne = total_pages_vues / total_sessions,  # avg pages per session
+    duree_moyenne_session = mean(total_timeOnsite, na.rm = TRUE),
+    taux_rebond = sum(total_bounces, na.rm = TRUE) / total_sessions,
+    .groups = "drop"
+  )
+
+```
+
+```{r}
+# Barplot du nombre total de sessions
+ggplot(comparaison, aes(x = type_visiteur, y = total_sessions, fill = type_visiteur)) +
+  geom_col() +
+  labs(title = "Nombre total de sessions : Nouveau vs Ancienne",
+       x = "Type de visiteur", y = "Nombre total de sessions") +
+  theme_minimal()
+
+# Barplot du nombre moyen de pages par session
+ggplot(comparaison, aes(x = type_visiteur, y = pages_par_session_moyenne, fill = type_visiteur)) +
+  geom_col() +
+  labs(title = "Nombre moyen de pages par session : Nouveau vs Ancienne",
+       x = "Type de visiteur", y = "Pages moyennes par session") +
+  theme_minimal()
+
+# Barplot de la durée moyenne
+ggplot(comparaison, aes(x = type_visiteur, y = duree_moyenne_session, fill = type_visiteur)) +
+  geom_col() +
+  labs(title = "Durée moyenne par session (en secondes)",
+       x = "Type de visiteur", y = "Durée moyenne") +
+  theme_minimal()
+
+# Barplot du taux de rebond
+ggplot(comparaison, aes(x = type_visiteur, y = taux_rebond, fill = type_visiteur)) +
+  geom_col() +
+  labs(title = "Taux de rebond : Nouveau vs Ancienne",
+       x = "Type de visiteur", y = "Taux de rebond") +
+  scale_y_continuous(labels = scales::percent_format()) +
+  theme_minimal()
+```
+
+Les quatre graphiques révèlent des différences intéressantes entre les visiteurs nouveaux (Nouveau) et les visiteurs récurrents (Ancienne) :
+- Tout d’abord, les nouveaux visiteurs génèrent un nombre total de sessions nettement plus élevé que les visiteurs récurrents, ce qui indique qu’ils représentent une part plus importante de notre base de données.
+- Cependant, le nombre de pages vues par session ainsi que la durée moyenne des sessions sont sensiblement plus élevés chez les visiteurs récurrents, ce qui suggère qu’ils s’engagent plus profondément à chaque visite.
+- Enfin, le taux de rebond est plus élevé chez les nouveaux visiteurs, ce qui implique qu’une plus grande proportion d’entre eux quittent le site après avoir consulté une seule page.
+Pris ensemble, ces éléments suggèrent que si les nouveaux visiteurs génèrent du volume, les visiteurs récurrents apportent une qualité d’engagement supérieure grâce à des sessions plus longues et un taux de rebond plus faible. Cela souligne l’importance de mettre en place des stratégies visant à fidéliser les nouveaux visiteurs et à les convertir en utilisateurs récurrents afin d’assurer un engagement durable.
 
 
 

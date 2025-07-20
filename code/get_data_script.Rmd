@@ -13,12 +13,12 @@ setwd("E:/Github/web-performance-analysis/")
 ```
 
 # Introduction
-This notebook shows how to extract and process \href{https://console.cloud.google.com/marketplace/product/obfuscated-ga360-data/obfuscated-ga360-data?q=search&referrer=search&inv=1&invt=Ab26RA&project=bigdata-382912}{\textbf{Google Analytics sample}} data from BigQuery API. The dataset contains 12 months of anonymized data (August 2016 to August 2017) from the Google Merchandise Store, a real ecommerce site selling Google-branded merchandise.
+Ce carnet montre comment extraire et traiter les données \href{https://console.cloud.google.com/marketplace/product/obfuscated-ga360-data/obfuscated-ga360-data?q=search&referrer=search&inv=1&invt=Ab26RA&project=bigdata-382912}{\textbf{d'exemple de Google Analytics}} à partir de l'API BigQuery.
+Le jeu de données contient 12 mois de données anonymisées (d'août 2016 à août 2017) provenant du Google Merchandise Store, un véritable site de commerce électronique vendant des articles de marque Google.
 
-# Setup
+# Configuration
 
 ```{r pkg.install, include=FALSE}
-
 # install.packages("bigrquery")      
 # install.packages("DBI")            
 # install.packages("plotly")         
@@ -32,7 +32,7 @@ This notebook shows how to extract and process \href{https://console.cloud.googl
 ```
 
 ```{r pkg.load}
-# Load required libraries
+# Charger les bibliothèques nécessaires
 library(bigrquery)
 library(DBI)
 library(dplyr)
@@ -46,17 +46,16 @@ library(here)
 
 # Authentication
 
-To use Big Query API directly from a Google Account, we use web browser authentication:
+Pour utiliser directement l'API BigQuery depuis un compte Google, nous utilisons l'authentification via le navigateur web :
 ```{r}
 bq_auth() # Sign in to Google Account with active Google Cloud console
 ```
 
-# Original data
+# Les données originales
 
-The original data can be access using the code below:
+Les données originales peuvent être accessibles en utilisant le code ci-dessous :
 
 ```{r}
-# Data importation tester
 project_id <- "bigdata-382912"
 sql <- "
 SELECT * 
@@ -69,16 +68,13 @@ org_df <- bq_table_download(tb)
 head(org_df)
 ```
 
-The original data contains 16 columns, 6 of them are nested (`totals`, `trafficSource`, `device`, `geoNetwork`, `customDimensions`, `hits`) and 3 of them are obfuscated (`visitorId`, `userId` and `clientId`).
+Les données originales contiennent 16 colonnes, dont 6 sont imbriquées (`totals`, `trafficSource`, `device`, `geoNetwork`, `customDimensions`, `hits`) et 3 sont obscurcies (`visitorId`, `userId` et `clientId`).
 
-# Extract one day of flattened columns
-We access 1 day of data from Google Analytic Sample dataset, by flatten a selection of unnested columns and also neglected obfuscated columns:
+# Extraire une journée de colonnes aplaties  
+Nous accédons à une journée de données provenant du jeu de données d'exemple de Google Analytics, en aplatissant une sélection de colonnes non imbriquées et en négligeant les colonnes obscurcies :
 
 ```{r}
-# Set your project ID
-project_id <- "bigdata-382912"
-
-# Write your SQL query (flattened version to avoid nested errors)
+# Query SQL
 main_query <- "
 SELECT
   -- single columns
@@ -110,44 +106,45 @@ SELECT
 FROM `bigquery-public-data.google_analytics_sample.ga_sessions_20170801`
 "
 
-# Run the query and save to a dataframe
+# Charger l'output de query sur un df
 df <- bq_project_query(project_id, main_query) %>%
       bq_table_download()
 
-# View the result
+# Vérifier le résultat
 head(df)
 ```
 
-**Data description**
+**Description des données**
 
-- `date`: Date of the session in YYYYMMDD format.  
-- `fullVisitorId`: Unique identifier for a user (visitor) across multiple sessions.  
-- `visitId`: Unique identifier for a specific session (visit) within a user’s visits.  
-- `visitNumber`: Number of visits a user has made to the site up to and including this session.  
-- `visitStartTime`: Timestamp (in UNIX format) when the session started.  
-- `channelGrouping`: Traffic channel category that brought the visitor to the site (e.g., Organic Search, Direct, Referral).  
-- `total_newVisits`: Indicator if this session was the user's first visit (1 if new visitor, else 0).  
-- `total_pageviews`: Total number of pages viewed during the session.  
-- `total_hits`: Total hits (interactions) recorded during the session.  
-- `total_bounces`: Number of single-page sessions (bounces) during this visit.  
-- `total_timeOnsite`: Total time spent on the site during the session (in seconds).  
-- `total_transactions`: Number of transactions completed during the session.  
-- `total_transactionRevenue`: Total revenue generated from transactions during the session (in micros, i.e., multiplied by 1,000,000).  
-- `total_totalTransactionRevenue`: Total transaction revenue aggregated across all transactions during the session (in micros, i.e., multiplied by 1,000,000). 
-- `trafficSource_source`: Source of the traffic for the session (e.g., google, direct, newsletter).  
-- `trafficSource_campaign`: Marketing campaign name associated with the traffic.  
-- `device_browser`: Browser used by the visitor (e.g., Chrome, Firefox).  
-- `device_deviceCategory`: Device category used to access the site (e.g., desktop, mobile, tablet).  
-- `geoNetwork_continent`: Continent from which the session originated.  
-- `geoNetwork_country`: Country from which the session originated.  
+- `date` : Date de la session au format AAAAMMJJ.  
+- `fullVisitorId` : Identifiant unique d’un utilisateur (visiteur) sur plusieurs sessions.  
+- `visitId` : Identifiant unique d’une session spécifique (visite) parmi les visites d’un utilisateur.  
+- `visitNumber` : Nombre de visites qu’un utilisateur a effectuées sur le site jusqu’à et incluant cette session.  
+- `visitStartTime` : Horodatage (en format UNIX) du début de la session.  
+- `channelGrouping` : Catégorie du canal de trafic ayant amené le visiteur sur le site (ex. Recherche organique, Direct, Référent).  
+- `total_newVisits` : Indicateur si cette session est la première visite de l’utilisateur (1 si nouveau visiteur, sinon 0).  
+- `total_pageviews` : Nombre total de pages vues pendant la session.  
+- `total_hits` : Nombre total d’interactions enregistrées pendant la session.  
+- `total_bounces` : Nombre de sessions à une seule page (rebonds) durant cette visite.  
+- `total_timeOnsite` : Temps total passé sur le site pendant la session (en secondes).  
+- `total_transactions` : Nombre de transactions réalisées pendant la session.  
+- `total_transactionRevenue` : Revenu total généré par les transactions pendant la session (en micros, c’est-à-dire multiplié par 1 000 000).
+- `total_totalTransactionRevenue` : Revenu total des transactions agrégé sur toutes les transactions durant la session (en micros).  
+- `trafficSource_source` : Source du trafic pour la session (ex. google, direct, newsletter).  
+- `trafficSource_campaign` : Nom de la campagne marketing associée au trafic.  
+- `device_browser` : Navigateur utilisé par le visiteur (ex. Chrome, Firefox).  
+- `device_deviceCategory` : Catégorie de l’appareil utilisé pour accéder au site (ex. ordinateur, mobile, tablette).  
+- `geoNetwork_continent` : Continent d’origine de la session.  
+- `geoNetwork_country` : Pays d’origine de la session.  
 
-# Generalized function to extract data by range of date
+# Fonction généralisée pour extraire les données selon une plage de dates
 
-This function downloads daily data for a given date range and saves it as Parquet files organized by year and month:
+Cette fonction télécharge les données quotidiennes pour une plage de dates donnée et les sauvegarde au format Parquet organisées par année et mois :
+
 
 ```{r data_download_function}
 download_ga_data <- function(project_id, start_date, end_date, saved_path, cardinality_threshold = 10) {
-  # Parse start and end dates
+  # Transformer date au bon format
   start_date <- ymd(start_date)
   end_date <- ymd(end_date)
   
@@ -184,37 +181,37 @@ download_ga_data <- function(project_id, start_date, end_date, saved_path, cardi
       FROM `bigquery-public-data.google_analytics_sample.ga_sessions_{date_str}`
     ")
     
-    # Query and download
+    # Exécuter la requête et télécharger les données
     df <- bq_project_query(project_id, main_query) %>% bq_table_download()
     
-    # Convert numeric columns with low cardinality to factor
+    # Convertir les colonnes numériques à faible cardinalité en facteurs
     df <- df %>%
       mutate(across(
         .cols = where(is.numeric),
         .fns = ~ if (n_distinct(.) <= cardinality_threshold) factor(.) else .
       ))
     
-    # Create directories if needed
+    # Créer les dossiers
     dir_path <- file.path(saved_path, year_str, month_str)
     if (!dir.exists(dir_path)) dir.create(dir_path, recursive = TRUE)
     
-    # Save as parquet
+    # Sauvegarder en format parquet
     save_path <- file.path(dir_path, paste0("ga_sessions_", date_str, ".parquet"))
     arrow::write_parquet(df, save_path)
     
-    message(glue("Saved data for {date_str} to {save_path}"))
+    message(glue("Données sauvegardées pour {date_str} dans {save_path}"))
     
-    # Next day
+    # Passer au jour suivant
     current_date <- current_date + days(1)
   }
 }
 ```
 
-# Full download
+# Téléchargement complete
 
-To download full data (from August 2016 to August 2017), we run the code below:
+Pour télécharger l’intégralité des données (d’août 2016 à août 2017), nous exécutons le code ci-dessous :
 
-```{r full_download}
+```{r full_download, eval=FALSE}
 download_ga_data(
   project_id="bigdata-382912",
   start_date="20160801",

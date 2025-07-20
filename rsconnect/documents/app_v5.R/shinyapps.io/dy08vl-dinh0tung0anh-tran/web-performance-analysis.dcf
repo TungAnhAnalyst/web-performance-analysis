@@ -1,0 +1,13 @@
+name: web-performance-analysis
+title: web-performance-analysis
+username: dy08vl-dinh0tung0anh-tran
+account: dy08vl-dinh0tung0anh-tran
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 15099833
+bundleId: 10644342
+url: https://dy08vl-dinh0tung0anh-tran.shinyapps.io/web-performance-analysis/
+version: 1
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: .RData|app/app_changelog.txt|app_v0.R|app_v1.R|app_v2.R|app_v3.R|app_v4.R|code/.RData|code/analysis.Rmd|code/get_data_script.pdf|code/get_data_script.Rmd|country_summary.rds|daily_summary.rds|device_summary.rds|local_data_export.R|README.md|visitor_summary.rds|data
