@@ -9,7 +9,7 @@ Ce projet montre comment accéder aux données Google Analytics via l'API Google
 ## Structure du projet
 
 - **`code/get_data_script.Rmd`**  
-  Script R Markdown expliquant comment se connecter à l'API Google BigQuery, télécharger l’échantillon de données Google Analytics, et sauvegarder localement au format Parquet sur **data/**. Les données sont partitionnées par année et mois pour une gestion optimale.
+  Script R Markdown expliquant comment se connecter à l'API Google BigQuery, télécharger l’échantillon de données Google Analytics, et sauvegarder localement au format Parquet sur **`data/`**. Les données sont partitionnées par année et mois pour une gestion optimale.
 
 - **`code/analysis.Rmd`**  
   Script R Markdown réalisant et visualisant une analyse des métriques de performance web sur les données téléchargées. Le résultat est un rapport HTML présentant les insights et tendances.
