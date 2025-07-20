@@ -1,4 +1,4 @@
-# Projet Google Analytics BigQuery & Analyse de la Performance Web
+# Projet de l'Analyse de la Performance Web avec Google Analytics Samples  
 
 ## Présentation
 
