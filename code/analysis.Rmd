@@ -3,10 +3,10 @@ title: "Google Analytics Sample - Analysis"
 author: "Tung Anh"
 date: "2025-07-16"
 output:
-  html_document:
-    self_contained: true
   pdf_document:
     latex_engine: xelatex
+  html_document:
+    self_contained: true
 ---
 
 ```{r setup, include=FALSE}
@@ -39,7 +39,7 @@ setwd("E:/Github/web-performance-analysis/")
 ```
 
 ```{r pkg.load}
-# Load required libraries
+# Chargement des bibliothèques
 library(bigrquery)
 library(DBI)
 library(dplyr)
@@ -73,15 +73,15 @@ custom_colors <- c(
 # Data Loading
 
 ```{r}
-# Open the dataset (arrow automatically handles partitioned dirs)
+# Chargement le jeu de données
 full_df <- open_dataset(here("data"), format = "parquet", partitioning = c("year", "month"))
 
 df = full_df %>% collect()
 ```
 
-# 1. Principal Session Metrics
+# 1. Métriques principales
 
-## 1a. Session per days
+## 1a. Nombre de sessions par jour.
 
 ```{r}
 # Collection des données
@@ -95,6 +95,7 @@ sessions_per_day <- full_df %>%
 avg_sessions <- mean(sessions_per_day$sessions, na.rm = TRUE)
 y_max <- max(sessions_per_day$sessions, na.rm = TRUE)
 
+# Visualisation
 ggplot(sessions_per_day, aes(x = date, y = sessions)) +
   geom_line(color = custom_colors["Blue"], linewidth = 1) +
   geom_hline(yintercept = avg_sessions, linetype = "dashed", color = custom_colors["Red"]) +  # ligne de moyenne
@@ -116,12 +117,13 @@ ggplot(sessions_per_day, aes(x = date, y = sessions)) +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) # rotation X
 ```
+
 Le graphique montre une augmentation marquée du nombre de sessions quotidiennes entre octobre et décembre 2016, atteignant des niveaux bien supérieurs à la moyenne de 2 424 sessions par jour. Cette période reflète probablement une campagne marketing efficace ou une activité saisonnière. Après décembre 2016, le nombre de sessions chute et reste de manière constante en dessous de la moyenne durant les mois suivants, ce qui suggère un retour au trafic habituel ou une baisse de l'effort promotionnel. Globalement, le graphique met en évidence un pic temporaire d’engagement utilisateur suivi d’une période de trafic plus stable et réduit.
 
-## 1b. Pageviews per session & Average session duration
+## 1b. Pages vues par session et durée moyenne des sessions
 
 ```{r}
-# 1. Calculate average pageviews per session
+# Calculer le nombre moyen de pages vues par session
 pageviews_per_session <- full_df %>%
   group_by(date = ymd(date)) %>%
   summarise(
@@ -131,7 +133,7 @@ pageviews_per_session <- full_df %>%
   ) %>%
   collect()
 
-# 2. Calculate average session duration (in minutes)
+# 2. Calculer la durée moyenne des sessions (en minutes)
 session_duration <- full_df %>%
   group_by(date = ymd(date)) %>%
   summarise(
@@ -142,14 +144,14 @@ session_duration <- full_df %>%
   collect() %>%
   mutate(avg_duration_min = avg_duration_sec / 60)
 
-# 3. Merge datasets by date
+# 3. Fusionner les jeux de données par date
 combined_df <- left_join(pageviews_per_session, session_duration, by = "date")
 
-# 4. Prepare scaling factors for secondary axis
+# 4. Préparer les facteurs de mise à l’échelle pour l’axe secondaire
 
 scale_factor <- max(combined_df$avg_pageviews, na.rm = TRUE) / max(combined_df$avg_duration_min, na.rm = TRUE)
 
-# 5. Plot with dual y-axes
+# 5. Plot avec dual y-axes
 ggplot(combined_df, aes(x = date)) +
   geom_line(aes(y = avg_pageviews), color = custom_colors["Green"], size = 1) +                           
   geom_line(aes(y = avg_duration_min * scale_factor), color = custom_colors["Red"], size = 1) +          
@@ -391,6 +393,7 @@ ggplot(bounce_monthly, aes(x = date, y = bounce_rate)) +
     axis.text.x = element_text(angle = 45, hjust = 1)
   )
 ```
+
 L’analyse de l’évolution mensuelle du taux de rebond révèle une rupture nette à partir d’octobre 2016, période déjà identifiée comme problématique, vraisemblablement liée à une campagne non balisée ou à une perte de suivi des sources de trafic.
 
 - En octobre 2016, le taux de rebond augmente brusquement pour atteindre 55,1 %, soit le niveau le plus élevé sur l'ensemble de données.
@@ -466,7 +469,7 @@ Ces sources génèrent un trafic **plus qualifié et potentiellement mieux cibl�
 
 # 2c. Taux de rebonds par pays.
 
-```{r}
+```{r, eval = knitr::is_html_output()}
 # Collection des données
 # Résumer les taux de rebond par pays et calculer les codes ISO3  
 bounce_by_country <- full_df %>%
@@ -596,6 +599,7 @@ ggplot(comparaison, aes(x = type_visiteur, y = taux_rebond, fill = type_visiteur
 ```
 
 Les quatre graphiques révèlent des différences intéressantes entre les visiteurs nouveaux (Nouveau) et les visiteurs récurrents (Ancienne) :
+
 - Tout d’abord, les nouveaux visiteurs génèrent un nombre total de sessions nettement plus élevé que les visiteurs récurrents, ce qui indique qu’ils représentent une part plus importante de notre base de données.
 - Cependant, le nombre de pages vues par session ainsi que la durée moyenne des sessions sont sensiblement plus élevés chez les visiteurs récurrents, ce qui suggère qu’ils s’engagent plus profondément à chaque visite.
 - Enfin, le taux de rebond est plus élevé chez les nouveaux visiteurs, ce qui implique qu’une plus grande proportion d’entre eux quittent le site après avoir consulté une seule page.
