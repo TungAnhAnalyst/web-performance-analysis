@@ -1,5 +1,5 @@
 - v0 : application basique, fonctionnait en local
 - v1 : application révisée, fonctionnait en local, échec de publication (version non compatible), stockage trop important
-- v2 : publication réussie, mais plantages lors du clic sur chaque section
+- v2 : publication réussie, mais blockages lors du clic sur chaque section
 - v3 : tout corrigé, mais app trop lourd pour plan gratuit de shinyapps.io
 - v4 : chargé et sauvegarder les données localement et n'ultiser l'appli que pour la visualisation, déploie finie, pas d'erreur
