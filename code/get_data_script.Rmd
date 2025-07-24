@@ -13,18 +13,20 @@ setwd("E:/Github/web-performance-analysis/")
 ```
 
 # Introduction
+
 Ce carnet montre comment extraire et traiter les données \href{https://console.cloud.google.com/marketplace/product/obfuscated-ga360-data/obfuscated-ga360-data?q=search&referrer=search&inv=1&invt=Ab26RA&project=bigdata-382912}{\textbf{d'exemple de Google Analytics}} à partir de l'API BigQuery.
 Le jeu de données contient 12 mois de données anonymisées (d'août 2016 à août 2017) provenant du Google Merchandise Store, un véritable site de commerce électronique vendant des articles de marque Google.
 
 # Configuration
 
 ```{r pkg.install, include=FALSE}
-# install.packages("bigrquery")      
-# install.packages("DBI")            
-# install.packages("plotly")         
-# install.packages("dplyr")          
-# install.packages("tidyr")          
-# install.packages("readr")          
+# # Installation si nécessaire
+# install.packages("bigrquery")
+# install.packages("DBI")
+# install.packages("plotly")
+# install.packages("dplyr")
+# install.packages("tidyr")
+# install.packages("readr")
 # install.packages("bigrquery")
 # install.packages("lubridate")
 # install.packages("arrow")
@@ -47,8 +49,9 @@ library(here)
 # Authentication
 
 Pour utiliser directement l'API BigQuery depuis un compte Google, nous utilisons l'authentification via le navigateur web :
+
 ```{r}
-bq_auth() # Sign in to Google Account with active Google Cloud console
+bq_auth() # Authentification via un compte Google
 ```
 
 # Les données originales
@@ -71,10 +74,11 @@ head(org_df)
 Les données originales contiennent 16 colonnes, dont 6 sont imbriquées (`totals`, `trafficSource`, `device`, `geoNetwork`, `customDimensions`, `hits`) et 3 sont obscurcies (`visitorId`, `userId` et `clientId`).
 
 # Extraire une journée de colonnes aplaties  
+
 Nous accédons à une journée de données provenant du jeu de données d'exemple de Google Analytics, en aplatissant une sélection de colonnes non imbriquées et en négligeant les colonnes obscurcies :
 
 ```{r}
-# Query SQL
+# Requête SQL
 main_query <- "
 SELECT
   -- single columns
@@ -150,6 +154,7 @@ download_ga_data <- function(project_id, start_date, end_date, saved_path, cardi
   
   current_date <- start_date
   
+  # Lancer une boucle pour télécharger le donner de la session de current_date
   while (current_date <= end_date) {
     date_str <- format(current_date, "%Y%m%d")
     year_str <- format(current_date, "%Y")
@@ -186,6 +191,7 @@ download_ga_data <- function(project_id, start_date, end_date, saved_path, cardi
     
     # Convertir les colonnes numériques à faible cardinalité en facteurs
     df <- df %>%
+      # Debugging quelque erreus liées au type numériques
       mutate(across(
         .cols = where(is.numeric),
         .fns = ~ if (n_distinct(.) <= cardinality_threshold) factor(.) else .

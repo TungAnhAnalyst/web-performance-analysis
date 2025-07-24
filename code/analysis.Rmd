@@ -19,6 +19,7 @@ setwd("E:/Github/web-performance-analysis/")
 # Setup
 
 ```{r pkg.install, include=FALSE}
+# # Installer les bibliothèques nécessaires (1 fois)
 
 # install.packages("bigrquery")
 # install.packages("DBI")
@@ -70,7 +71,7 @@ custom_colors <- c(
 )
 ```
 
-# Data Loading
+# Chargement de données
 
 ```{r}
 # Chargement le jeu de données
@@ -99,8 +100,9 @@ y_max <- max(sessions_per_day$sessions, na.rm = TRUE)
 ggplot(sessions_per_day, aes(x = date, y = sessions)) +
   geom_line(color = custom_colors["Blue"], linewidth = 1) +
   geom_hline(yintercept = avg_sessions, linetype = "dashed", color = custom_colors["Red"]) +  # ligne de moyenne
+  # axe Y avec la moyenne
   scale_y_continuous(
-    name = "Number of Sessions",
+    name = "Nombre de sessions",
     limits = c(0, y_max),
     breaks = sort(unique(c(seq(0, y_max, by = 1000), round(avg_sessions, 0)))),
     labels = function(x) ifelse(x == round(avg_sessions, 0), # afficher la moyenne sur l'axe Y
@@ -113,7 +115,7 @@ ggplot(sessions_per_day, aes(x = date, y = sessions)) +
     date_labels = "%m/%Y",
     expand = expansion(add = c(0, 5))
   ) +
-  labs(title = "Daily Sessions with Average Line", x = "Month") +
+  labs(title = "Nombre de sessions quotidiennes", x = "Month") +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) # rotation X
 ```
@@ -123,6 +125,7 @@ Le graphique montre une augmentation marquée du nombre de sessions quotidiennes
 ## 1b. Pages vues par session et durée moyenne des sessions
 
 ```{r}
+# Collection des données
 # Calculer le nombre moyen de pages vues par session
 pageviews_per_session <- full_df %>%
   group_by(date = ymd(date)) %>%
@@ -156,11 +159,11 @@ ggplot(combined_df, aes(x = date)) +
   geom_line(aes(y = avg_pageviews), color = custom_colors["Green"], size = 1) +                           
   geom_line(aes(y = avg_duration_min * scale_factor), color = custom_colors["Red"], size = 1) +          
   scale_y_continuous(
-    name = "Average Pageviews per Session",
-    sec.axis = sec_axis(~ . / scale_factor, name = "Average Session Duration (min)")
+    name = "Moyenne de page vues par session",
+    sec.axis = sec_axis(~ . / scale_factor, name = "Durée moyenne de session (min)")
   ) +
   labs(
-    title = "Average Pageviews per Session and Session Duration Over Time",
+    title = "Nombre moyen de pages vues par session et durée des sessions au fil du temp",
     x = "Date"
   ) +
   scale_x_date(                                                            
@@ -394,13 +397,12 @@ ggplot(bounce_monthly, aes(x = date, y = bounce_rate)) +
   )
 ```
 
-L’analyse de l’évolution mensuelle du taux de rebond révèle une rupture nette à partir d’octobre 2016, période déjà identifiée comme problématique, vraisemblablement liée à une campagne non balisée ou à une perte de suivi des sources de trafic.
+L’analyse de l’évolution mensuelle du taux de rebond révèle une rupture nette à partir d’octobre 2016:
 
 - En octobre 2016, le taux de rebond augmente brusquement pour atteindre 55,1 %, soit le niveau le plus élevé sur l'ensemble de données.
-- Cette valeur reste anormalement haute jusqu’en novembre 2016, avant de chuter à 45,7 % en décembre, puis de se stabiliser à 49,3 % en janvier 2017, témoignant d’un retour progressif à un comportement plus habituel. Pour la suite de 2017, le taux de rebonds fluctue entre 48 et 52%.
+- Ce taux revient au normal en novembre 2016 (51,7%), avant de chuter à 45,7 % en décembre, puis de se stabiliser à 49,3 % en janvier 2017, témoignant d’un retour progressif à un comportement plus habituel. Pour la suite de 2017, le taux de rebonds fluctue entre 48 et 52%.
 
-Avant cette période, les taux de rebond sont relativement stables autour de 49–50%, correspondant à un comportement plus engagé des visiteurs.
-Cette hausse coïncide avec d’autres signaux observés sur la partie 1. Ces éléments confirment l’hypothèse d’une campagne externe non balisée (par exemple via emailing ou réseaux sociaux), générant un trafic mal attribué et souvent peu qualifié, ce qui a eu pour effet d'augmenter artificiellement le taux de rebond.
+Avant cette période, les taux de rebond sont relativement stables autour de 49–50%. Cette hausse coïncide avec d’autres signaux observés sur la partie 1. Ces éléments confirment l’hypothèse d’une campagne externe non balisée (par exemple via emailing ou réseaux sociaux), générant un trafic mal attribué et souvent peu qualifié, ce qui a eu pour effet d'augmenter artificiellement le taux de rebond.
 
 # 2b. Taux de rebond par source
 
@@ -409,7 +411,7 @@ Cette hausse coïncide avec d’autres signaux observés sur la partie 1. Ces é
 top_sources <- full_df %>%
   mutate(
   date = ymd(date),
-  total_bounces = as.numeric(as.character(total_bounces)),
+  total_bounces = as.numeric(as.character(total_bounces)), # transformer string en numérique, N/A à 0
   visitId = as.character(visitId)
 ) %>%
   group_by(trafficSource_source) %>%
@@ -425,7 +427,8 @@ top_sources <- full_df %>%
 # Visualisation
 ggplot(top_sources, aes(x = reorder(trafficSource_source, bounce_rate), y = bounce_rate)) +
   geom_col(fill = custom_colors["Green"]) +
-  geom_hline(yintercept = avg_bounce,   # ← correction ici
+  # Ligne vertical de la moyenne
+  geom_hline(yintercept = avg_bounce,
              linetype = "dashed", 
              color = custom_colors["Red"], 
              size = 1) +
@@ -532,7 +535,7 @@ p <- ggplot(map_data) +
 # Rendre le graphique interactif avec plotly  
 ggplotly(p, tooltip = "text")
 ```
-Le taux de rebond est significativement plus faible sur les marchés des États-Unis (35,4 %) et du Canada, comparé à la moyenne observée dans le reste du monde, où il dépasse souvent 60 %. Cela suggère un engagement utilisateur nettement supérieur en Amérique du Nord. Par conséquent, il est crucial de distinguer ces marchés du reste du monde lors de l’analyse des performances globales du site. Une agrégation globale masquerait des dynamiques régionales essentielles, comme les zones à fort taux de rebond (plus de 65 %) observées en Afrique, en Amérique latine et dans plusieurs pays d’Asie, ce qui pourrait orienter différemment les décisions d’optimisation UX ou marketing.
+Le taux de rebond est significativement plus faible sur les marchés des États-Unis (35,4 %) et du Canada, comparé à la moyenne observée dans le reste du monde, où il dépasse souvent 60 %. Cela suggère un engagement utilisateur nettement supérieur en Amérique du Nord. Par conséquent, il est crucial de distinguer ces marchés du reste du monde lors de l’analyse des performances globales du site. Une agrégation de manière globale masquerait des dynamiques régionales essentielles, comme les zones à fort taux de rebond (plus de 65 %) observées en Afrique, en Amérique latine et dans plusieurs pays d’Asie, ce qui pourrait orienter différemment les décisions d’optimisation UX ou marketing.
 
 # 3. L'analyse des nouveaux visiteurs vs. anciennes visiteurs
 
