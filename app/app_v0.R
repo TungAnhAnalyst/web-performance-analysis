@@ -10,7 +10,7 @@ library(rnaturalearthdata)
 library(sf)
 library(arrow)
 
-# === Load and preprocess your data ===
+# === Load and preprocess data ===
 full_df <- open_dataset(here("data"), format = "parquet", partitioning = c("year", "month"))
 df <- full_df %>% collect()
 
@@ -18,9 +18,9 @@ df <- full_df %>% collect()
 df$total_pageviews <- as.numeric(as.character(df$total_pageviews))
 df$total_timeOnsite <- as.numeric(as.character(df$total_timeOnsite))
 df$total_bounces <- as.character(df$total_bounces)
-df$total_bounces <- ifelse(is.na(df$total_bounces), "0", df$total_bounces)  # fill NAs with "0"
-df$total_bounces <- ifelse(df$total_bounces == "1", "1", "0")  # only "1" means bounce, else "0"
-df$total_bounces <- as.numeric(df$total_bounces)  # numeric bounce flag
+df$total_bounces <- ifelse(is.na(df$total_bounces), "0", df$total_bounces) 
+df$total_bounces <- ifelse(df$total_bounces == "1", "1", "0")
+df$total_bounces <- as.numeric(df$total_bounces)
 
 df$total_newVisits <- as.character(df$total_newVisits)
 

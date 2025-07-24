@@ -1,3 +1,4 @@
+# Chargement de bibliothèques nécessaires
 library(shiny)
 library(shinydashboard)
 library(dplyr)
@@ -15,15 +16,18 @@ library(here)
 # Chargement dataset Arrow (lazy, pas encore collect)
 full_df <- open_dataset(here("data"), format = "parquet", partitioning = c("year", "month"))
 
+# Interface utilisateur avec shinydashboard
 ui <- dashboardPage(
   dashboardHeader(title = "Tableau de Bord Engagement Utilisateur"),
   dashboardSidebar(
     sidebarMenu(
+      # Menu principal avec 4 onglets
       menuItem("Global", tabName = "global", icon = icon("chart-line")),
       menuItem("Par Géographie", tabName = "geo", icon = icon("globe")),
       menuItem("Par Appareil", tabName = "device", icon = icon("mobile-alt")),
       menuItem("Nouveaux vs Retournants", tabName = "visitor", icon = icon("user-friends"))
     ),
+    # Choix de la métrique à afficher (sessions, pages moyennes, taux de rebond)
     radioButtons("metric", "Choisir la métrique :",
                  choices = c("Sessions Totales" = "sessions",
                              "Pages Moyennes par Session" = "avg_pageviews",
@@ -32,6 +36,7 @@ ui <- dashboardPage(
   ),
   dashboardBody(
     tabItems(
+      # Onglet global : graphique temps
       tabItem(tabName = "global",
               fluidRow(
                 box(width = 12,
@@ -40,6 +45,7 @@ ui <- dashboardPage(
                 )
               )
       ),
+      # Onglet géographie : carte mondiale
       tabItem(tabName = "geo",
               fluidRow(
                 box(width = 12,
@@ -48,6 +54,7 @@ ui <- dashboardPage(
                 )
               )
       ),
+      # Onglet appareil : graphique par device
       tabItem(tabName = "device",
               fluidRow(
                 box(width = 12,
@@ -56,6 +63,7 @@ ui <- dashboardPage(
                 )
               )
       ),
+      # Onglet visiteur : nouveau vs ancien
       tabItem(tabName = "visitor",
               fluidRow(
                 box(width = 12,
@@ -70,7 +78,7 @@ ui <- dashboardPage(
 
 server <- function(input, output, session) {
   
-  # Agrégation journalière — tout en Arrow, puis collect final
+  # Agrégation journalière en base Arrow (lazy evaluation) puis collecte finale en R
   daily_metrics <- reactive({
     full_df %>%
       select(date, visitId, total_pageviews, total_bounces) %>%
@@ -83,12 +91,12 @@ server <- function(input, output, session) {
       collect() %>%
       mutate(
         date = ymd(date),
-        avg_pageviews = total_pageviews / sessions,
-        avg_bounce = total_bounces / sessions
+        avg_pageviews = total_pageviews / sessions,  # calcul pages moyennes/session
+        avg_bounce = total_bounces / sessions        # calcul taux de rebond moyen
       )
   })
   
-  # Agrégation par pays — Arrow + collect final, conversion iso3 dans R
+  # Agrégation par pays, conversion des noms pays en ISO3 pour jointure géographique
   country_metrics <- reactive({
     df_country <- full_df %>%
       select(geoNetwork_country, visitId, total_pageviews, total_bounces) %>%
@@ -104,12 +112,12 @@ server <- function(input, output, session) {
       mutate(
         avg_pageviews = total_pageviews / sessions,
         avg_bounce = total_bounces / sessions,
-        iso3 = countrycode(geoNetwork_country, origin = "country.name", destination = "iso3c")
+        iso3 = countrycode(geoNetwork_country, origin = "country.name", destination = "iso3c") # conversion nom pays en iso3
       ) %>%
-      filter(!is.na(iso3))
+      filter(!is.na(iso3))  # filtre pays sans code iso3 valide
   })
   
-  # Agrégation par device — Arrow + collect final
+  # Agrégation par type d'appareil (desktop, mobile, etc.)
   device_metrics <- reactive({
     full_df %>%
       select(device_deviceCategory, visitId, total_pageviews, total_bounces) %>%
@@ -126,7 +134,8 @@ server <- function(input, output, session) {
       )
   })
   
-  # Agrégation visiteurs (Nouveau vs Ancien) — nécessite collect avant mutation car condition complexe
+  # Agrégation par type de visiteur (nouveau vs ancien)
+  # Collecte nécessaire avant mutation à cause de la condition sur total_newVisits
   visitor_metrics <- reactive({
     full_df %>%
       select(total_newVisits, visitId, total_pageviews, total_bounces) %>%
@@ -143,8 +152,9 @@ server <- function(input, output, session) {
       )
   })
   
-  # --- Outputs ---
+  # --- Outputs graphiques ---
   
+  # Graphique série temporelle globale selon métrique choisie
   output$time_plot <- renderPlotly({
     df <- daily_metrics()
     p <- ggplot(df, aes(x = date, y = .data[[input$metric]])) +
@@ -164,11 +174,12 @@ server <- function(input, output, session) {
     ggplotly(p)
   })
   
+  # Carte mondiale colorée selon métrique par pays
   output$map_plot <- renderPlotly({
     df <- country_metrics()
     
-    world <- ne_countries(scale = "medium", returnclass = "sf")
-    map_data <- left_join(world, df, by = c("iso_a3" = "iso3"))
+    world <- ne_countries(scale = "medium", returnclass = "sf") # carte du monde (sf)
+    map_data <- left_join(world, df, by = c("iso_a3" = "iso3")) # jointure données
     
     fill_vals <- map_data[[input$metric]]
     
@@ -208,6 +219,7 @@ server <- function(input, output, session) {
     ggplotly(p, tooltip = "text")
   })
   
+  # Histogramme métrique par catégorie d’appareil
   output$device_plot <- renderPlotly({
     df <- device_metrics()
     p <- ggplot(df, aes(x = device_deviceCategory, y = .data[[input$metric]], fill = device_deviceCategory)) +
@@ -218,6 +230,7 @@ server <- function(input, output, session) {
     ggplotly(p)
   })
   
+  # Histogramme métrique par type de visiteur (nouveau vs ancien)
   output$visitor_plot <- renderPlotly({
     df <- visitor_metrics()
     p <- ggplot(df, aes(x = visitorType, y = .data[[input$metric]], fill = visitorType)) +
@@ -229,4 +242,5 @@ server <- function(input, output, session) {
   })
 }
 
+# Lancement de l'application Shiny
 shinyApp(ui, server)

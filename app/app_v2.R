@@ -78,7 +78,7 @@ server <- function(input, output, session) {
         sessions = n_distinct(visitId),
         total_pageviews = sum(as.numeric(total_pageviews), na.rm = TRUE),
         total_bounces = sum(as.numeric(total_bounces), na.rm = TRUE),
-        total_newVisits = sum(ifelse(total_newVisits == "1", 1, 0), na.rm = TRUE) # just example, avoid if too complex
+        total_newVisits = sum(ifelse(total_newVisits == "1", 1, 0), na.rm = TRUE) 
       ) %>%
       collect()
     
