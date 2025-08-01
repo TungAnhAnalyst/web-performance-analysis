@@ -3,6 +3,8 @@ title: "Google Analytics Sample - Analyse des Parcours des Nagivation"
 author: "Tung Anh"
 date: "2025-07-30"
 output:
+  html_document:
+    self_contained: true
   pdf_document:
     latex_engine: xelatex
 ---
@@ -59,6 +61,8 @@ La première partie de mon analyse a déjà mis en évidence un comportement ano
 
 
 ```{r}
+project_id <- "bigdata-382912"
+
 # Requête SQL
 query1 <- "
 SELECT
