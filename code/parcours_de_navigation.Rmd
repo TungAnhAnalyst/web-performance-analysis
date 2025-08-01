@@ -1,0 +1,222 @@
+---
+title: "Google Analytics Sample - Analyse des Parcours des Nagivation"
+author: "Tung Anh"
+date: "2025-07-30"
+output:
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+setwd("E:/Github/web-performance-analysis/")
+```
+
+# Introduction
+
+Après une première phase d’exploration réalisée à partir des données téléchargées en local, j’ai poursuivi l’analyse des performances du site web en approfondissant les parcours de navigation des utilisateurs — au-delà des indicateurs classiques tels que le taux de rebond, la durée de session ou les pages vues. L’objectif principal est d’identifier les schémas de navigation, les points de sortie ainsi que les comportements récurrents ou inhabituels.
+
+Cependant, pour analyser les parcours à partir des colonnes `hit`, il aurait été nécessaire de re-télécharger l’ensemble des données dans leur version complète, ce qui dépasse rapidement les quotas gratuits de Google Cloud Platform. Pour éviter cela, j’ai opté dans cette seconde partie pour une extraction ciblée directement depuis BigQuery, en ne récupérant que le sous-ensemble de données pertinent, incluant les variables manquantes, et ce, sans surcharger le stockage local.
+ 
+
+# Configuration
+
+```{r pkg.install, include=FALSE}
+# # Installation si nécessaire
+# install.packages("bigrquery")
+# install.packages("DBI")
+# install.packages("plotly")
+# install.packages("dplyr")
+# install.packages("tidyr")
+# install.packages("readr")
+# install.packages("bigrquery")
+# install.packages("lubridate")
+# install.packages("arrow")
+# install.packages("glue")
+```
+
+```{r pkg.load}
+# Charger les bibliothèques nécessaires
+library(bigrquery)
+library(DBI)
+library(dplyr)
+library(tidyr)
+library(readr)
+library(lubridate)
+library(arrow)
+library(glue)
+library(here)
+library(stringr)
+```
+
+```{r authentification}
+bq_auth() # Authentification via un compte Google
+```
+
+# Plan d’analyse
+
+La première partie de mon analyse a déjà mis en évidence un comportement anormal entre octobre et décembre 2016. Dans cette seconde phase, j’étends l’intervalle d’étude d’août 2016 à février 2017. L’objectif est non seulement d’analyser les comportements de navigation mois par mois, mais aussi de comparer les tendances observées avant octobre 2016 et après décembre 2016, afin de mieux cerner les écarts ou ruptures dans les parcours utilisateurs.
+
+
+```{r}
+# Requête SQL
+query1 <- "
+SELECT
+  PARSE_DATE('%Y%m%d', _TABLE_SUFFIX) AS date,
+  fullVisitorId,
+  visitId,
+  visitNumber,
+  hits.hitNumber AS hitNumber,
+  hits.page.pagePath AS pagePath,
+  --dimension
+  channelGrouping,
+  totals.newVisits AS total_newVisits,
+  trafficSource.source AS trafficSource_source,
+  device.deviceCategory As device_deviceCategory,
+  geoNetwork.country AS geoNetwork_country
+FROM
+  `bigquery-public-data.google_analytics_sample.ga_sessions_*`,
+UNNEST(hits) AS hits
+WHERE
+  _TABLE_SUFFIX BETWEEN '20160801' AND '20170228'
+  AND
+  hits.type = 'PAGE'
+ORDER BY
+  fullVisitorId,
+  visitId,
+  visitNumber,
+  hitNumber
+"
+
+# Charger l'output de query sur un df
+df1 <- bq_project_query(project_id, query1) %>%
+      bq_table_download()
+
+# Vérifier le résultat
+head(df1)
+```
+
+# La tendance mensuel de parcours de navigation
+
+On analyse d'abord, les 10 parcours de navigation les plus fréquent de chaque mois:
+
+```{r}
+# Fonction pour tronquer les chemins longs en gardant la fin visible
+truncate_path <- function(path, max_length = 50) {
+  if (str_length(path) > max_length) {
+    return(paste0("...", str_sub(path, -max_length, -1)))
+  } else {
+    return(path)
+  }
+}
+
+df1$date <- as.Date(df1$date)
+
+# Top 10 parcours le plus fréquent par mois
+top_paths_by_month <- df1 %>%
+  mutate(month = format(date, "%Y-%m")) %>%
+  arrange(fullVisitorId, visitId, hitNumber) %>%
+  group_by(fullVisitorId, visitId, month) %>%
+  summarise(path = paste(pagePath, collapse = " -> "), .groups = 'drop') %>%
+  count(month, path, name = "frequency") %>%
+  group_by(month) %>%
+  slice_max(frequency, n = 10) %>%
+  arrange(month, desc(frequency)) %>%
+  mutate(path_display = sapply(path, truncate_path))
+
+# Affichage mois par mois avec chemin tronqué pour la visibilité (le parcours complète est toujours sur la colonne path)
+for(m in unique(top_paths_by_month$month)) {
+  cat("\n== ", m, " ==\n")
+  print(top_paths_by_month %>% filter(month == m) %>% select(month, path_display, frequency))
+}
+
+```
+À côté des parcours avec répétition de page `/home` et le parcours de type `/home/signin.html` qui sont les plus souvent utilisé pour l'action de connecter au compte d'utilisateur, on observe que:
+- **Avant octobre 2016 (août-septembre 2016)**: Les utilisateurs visitent majoritairement des pages produits spécifiques, notamment la catégorie «apparel men’s t-shirts» (`/google+redesign/apparel/men++s/men++s+t+shirts`) et des sections comme «drinkware» ou «bags»
+- **Entre octobre et décembre 2016**: On constate une montée en fréquence des visites vers des pages de marques (`/google+redesign/shop+by+brand/youtube`), alors que «apparel men’s t-shirts» est toujours le produit spécifiquement intéressés. Cette augmentation est bien cohérence avec le source de traffic de `youtube.com` qu'on trouvé sur la première partie d'analyse.
+- **Après décembre 2016 (janvier-février 2017)**: La tendance de naviguer les produits par la marques `youtube` se confirme avec un maintien élevé des visites termine sur cette page. En plus, des parcours vers des pages panier (`/basket.html`) et des pages de vérifier la commande (`/myaccount.html?mode=vieworderdetail`) pparaissent plus fréquemment, traduisant une évolution vers des actions d’achat. Les séquences sur les pages produit deviennent plus variées, avec des parcours incluant différentes catégories (ex. «apparel men’s outerwear»). Cela indique un comportement utilisateur plus engagé, avec un cheminement vers la conversion.
+
+## La tendance mensuel de point de sortie
+
+```{r}
+# Requête SQL
+query2 <- "
+SELECT
+  PARSE_DATE('%Y%m%d', _TABLE_SUFFIX) AS date,
+  fullVisitorId,
+  visitId,
+  visitNumber,
+  hits.hitNumber AS hitNumber,
+  hits.page.pagePath AS pagePath,
+  --dimension
+  channelGrouping,
+  totals.newVisits AS total_newVisits,
+  trafficSource.source AS trafficSource_source,
+  device.deviceCategory As device_deviceCategory,
+  geoNetwork.country AS geoNetwork_country
+FROM
+  `bigquery-public-data.google_analytics_sample.ga_sessions_*`,
+UNNEST(hits) AS hits
+WHERE
+  _TABLE_SUFFIX BETWEEN '20160801' AND '20170228'
+  AND
+  hits.type = 'PAGE'
+ORDER BY
+  fullVisitorId,
+  visitId,
+  visitNumber,
+  hitNumber
+"
+
+# Charger l'output de query sur un df
+df2 <- bq_project_query(project_id, query2) %>%
+      bq_table_download()
+```
+```{r}
+df2$date <- as.Date(df2$date)
+
+# Extraire le dernier hit (point de sortie) par visite
+exit_points <- df2 %>%
+  group_by(fullVisitorId, visitId) %>%
+  filter(hitNumber == max(hitNumber)) %>%
+  ungroup()
+
+# Ajouter une colonne mois au format "YYYY-MM"
+exit_points <- exit_points %>%
+  mutate(month = format(date, "%Y-%m"))
+
+# Compter la fréquence des pages de sortie par mois
+top_exit_points_by_month <- exit_points %>%
+  group_by(month, pagePath) %>%
+  summarise(frequency = n(), .groups = "drop") %>%
+  group_by(month) %>%
+  slice_max(order_by = frequency, n = 10) %>%
+  arrange(month, desc(frequency))
+
+# Affichage mois par mois
+for(m in unique(top_exit_points_by_month$month)) {
+  print(top_exit_points_by_month %>% filter(month == m))
+}
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

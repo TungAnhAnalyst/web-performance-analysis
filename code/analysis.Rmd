@@ -62,7 +62,6 @@ library(plotly)
 ```
 
 ```{r graph_custom}
-# Définir vos couleurs personnalisées
 custom_colors <- c(
   "Blue"   = "#4285F4",
   "Red"    = "#DB4437",
@@ -205,7 +204,6 @@ df_monthly <- full_df %>%
   filter(date >= ymd("2016-08-01") & date <= ymd("2017-03-31")) %>%
   collect() %>%
   mutate(month = format(date, "%m/%Y"))
-
 
 # Calculer le top 3 des sources par mois
 top_sources_monthly <- df_monthly %>%
@@ -607,9 +605,6 @@ Les quatre graphiques révèlent des différences intéressantes entre les visit
 - Cependant, le nombre de pages vues par session ainsi que la durée moyenne des sessions sont sensiblement plus élevés chez les visiteurs récurrents, ce qui suggère qu’ils s’engagent plus profondément à chaque visite.
 - Enfin, le taux de rebond est plus élevé chez les nouveaux visiteurs, ce qui implique qu’une plus grande proportion d’entre eux quittent le site après avoir consulté une seule page.
 Pris ensemble, ces éléments suggèrent que si les nouveaux visiteurs génèrent du volume, les visiteurs récurrents apportent une qualité d’engagement supérieure grâce à des sessions plus longues et un taux de rebond plus faible. Cela souligne l’importance de mettre en place des stratégies visant à fidéliser les nouveaux visiteurs et à les convertir en utilisateurs récurrents afin d’assurer un engagement durable.
-
-
-
 
 
 
